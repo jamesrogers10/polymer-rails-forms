@@ -42,7 +42,7 @@ This syntax, however short is a bit clunky, a better way of using this gem is to
 polymer element that extends rails-form. Here's the same login form
 
 
-```
+```html
 <link rel="import" href="../rails-forms/rails-form.html" >
 <polymer-element name="login-form" extends='rails-form'>
   <shadow></shadow>
@@ -71,7 +71,7 @@ better for complex forms.
 Nested attributes are supported (otherwise what's the point right?). This is that login form 
 again, but this time with nested location attributes
 
-```
+```html
 <link rel="import" href="../rails-forms/rails-form.html" >
 <polymer-element name="login-form" extends='rails-form'>
   <shadow></shadow>
@@ -107,4 +107,28 @@ you were to set ```allowAdd: true``` the inputs would be in a list with the opti
 
 
 ##What's supported what's not
+
+So far the field types that are supported are:
+
+*string
+*password
+*hidden
+*textarea
+*email
+*url
+*integer
+*date (uses pickaday.js)
+*location (uses google places API, which you'll have to include separately)
+*image (works, but CSS is messed up)
+*checkbox
+*json (limted, only basic objects are supported so far, not nested arrays and objects)
+
+What's not supported 
+
+*radio buttons
+*selects
+*ranges
+*everything else
+
+Support for radio buttons
 
