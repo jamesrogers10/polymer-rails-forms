@@ -106,6 +106,18 @@ to set ```multiple: true``` the name would become ```user[location_attributes][0
 you were to set ```allowAdd: true``` the inputs would be in a list with the option to create more. 
 
 
+####Note:
+
+If you're going to use the domReady function in your custom form element, be sure to call
+```this.super()``` at the top of the function to run the form's default domReady functionality 
+(which includes appending all the inputs so... kind of important). If you don't want the default 
+functionality though, just make sure you run the ```this.appendInputs()``` so the inputs get added. 
+
+###XHR
+
+To make the form ajaxy just include the form element's ```xhr='true'``` param 
+and override the ```handleXhrCallback``` function. 
+
 ##What's supported what's not
 
 ###So far the field types that are supported are:
