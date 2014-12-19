@@ -257,12 +257,19 @@
         button.addEventListener("click", function(e){
           if (this.action !== null){
             if (this.xhr){
+              if (!!this.scope && this.scope.length > 0){
+                var data = {};
+                data[this.scope] = this.data;
+              } else {
+                data = this.data;
+              }
+
               this.$.xhr.request({ 
                 method: this.method, 
                 url: this.action, 
-                body: JSON.stringify(this.data), 
-                callback: this.handleXhrCallback 
-                headers: headers: { "Content-type": "application/json", "Accept": "application/json" }
+                body: JSON.stringify(data), 
+                callback: this.handleXhrCallback, 
+                headers: { "Content-type": "application/json", "Accept": "application/json" }
               })
             } else {
               form.submit();
