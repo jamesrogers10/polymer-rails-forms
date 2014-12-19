@@ -25,28 +25,14 @@ then in your /app/assets/components/application.html file add
 ```
 
 ##Basic example
-
 This is what a simple login form could look like using this gem
 
 ```html
-<link rel="import" href="../gc-rails-form/rails-form.html" >
-<polymer-element name="login-form" extends='rails-form'>
-  <shadow></shadow>
-  
-  <script>
-    Polymer({
-      action: "/users/sign_in",
-      method: "POST",
-      scope: "user",
-      submitText: "Sign In",
-
-      ready: function(){
-        this.structure = {
-          email: { type: 'string', label: "Email Address" },
-          password: { type: 'password' }
-        }               
-      }
-    });
-  </script>
-</polymer-element>
+<rails-form id='sign_in_form' action="/users/sign_in" methos="POST" scope="user" submitText="Sign In"></rails-form>
+<script>
+	document.getElementById("sign_in_form").setAttribute("structure", JSON.stringify({
+		email: { type: 'string', label: "Email Address" },
+    	password: { type: 'password' }
+    }))
+</script>
 ```
