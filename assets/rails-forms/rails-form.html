@@ -252,12 +252,18 @@
 
       domReady: function(){
         var form = this.shadowRoot.querySelector("form"),
-            button = this.shadowRoot.querySelector("paper-button");
+            button = this.shadowRoot.querySelector("#submit-button");
         
         button.addEventListener("click", function(e){
           if (this.action !== null){
             if (this.xhr){
-              this.$.xhr.request({ method: this.method, url: this.action, params: this.data, callback: this.handleXhrCallback })
+              this.$.xhr.request({ 
+                method: this.method, 
+                url: this.action, 
+                body: JSON.stringify(this.data), 
+                callback: this.handleXhrCallback 
+                headers: headers: { "Content-type": "application/json", "Accept": "application/json" }
+              })
             } else {
               form.submit();
             }

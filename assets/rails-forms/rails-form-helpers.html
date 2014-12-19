@@ -635,8 +635,8 @@
     },
 
     appendInputs: function(){
-      for (var i=0; i<this.inputList.length; i++){
-        var obj = this.inputList[i],
+      while (this.inputList.length){
+        var obj = this.inputList.shift(),
             container = this.shadowRoot.querySelector(obj.container);
       
         //TODO: insert points
