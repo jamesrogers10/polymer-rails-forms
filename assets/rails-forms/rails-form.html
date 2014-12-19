@@ -1,0 +1,288 @@
+<link rel="import" href="rails-form-helpers.html" >
+<link rel="import" href="rails-form-validators.html" >
+<link rel="import" href="gc-paper-decorator.html" >
+<link rel="import" href="../../paper-button/paper-button.html" >
+<link rel="import" href="../../core-icons/image-icons.html" >
+<link rel="import" href="../../core-ajax/core-xhr.html" >
+
+<script src='pikaday.js'></script>
+
+<polymer-element name="rails-form">
+  <template>
+    <link rel='stylesheet' href='pikaday.css'> 
+    <style>
+      paper-button {
+        font-size: 14px;
+      }
+
+      paper-button core-icon {
+        margin-right: 5px;
+        color: #5bc0de;
+      }
+      
+      #submit-button {
+        margin-top: 15px;
+        padding-left: 30px;
+        padding-right: 30px;
+        background-color: #5bc0de;
+        border-color: #46b8da;
+        color: white;
+      }
+
+      gc-input-decorator {
+        text-align: left !important;
+      }
+
+      gc-input-decorator .label {
+        text-align: left !important;
+      }
+
+      .btn-image-upload {
+        position: relative;
+        overflow: hidden;
+        width: 100%;
+        height: 59px;
+        display: table;
+      }
+
+      .btn-image-upload core-icon {
+        height: 105px;
+        width: 105px;
+        margin: 0 auto;
+        display: block;
+        color: #666;
+      }
+
+      .btn-image-upload input[type=file] {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        font-size: 999px;
+        text-align: right;
+        filter: alpha(opacity=0);
+        opacity: 0;
+        outline: none;
+        background: white;
+        cursor: inherit;
+        display: block;
+      }
+
+      .list-group {
+        width: 100%;
+        box-sizing: border-box;
+        display: block;
+        padding: 9px 0px 0px 10px;
+        font-size: 14px;
+      }
+
+      .list-group .list-item {
+        width: 100%;
+      }
+
+      .list-group .list-item .list-item-display {
+        border-bottom: solid 1px;
+        display: flex;
+        flex-direction: row;
+      }
+
+      .list-group .list-item .list-item-display div {
+        flex: 1;
+        cursor: pointer;
+      }
+
+      .list-wrapper {
+        overflow: auto;
+        font-size: 0px; 
+        padding-top: 10px;
+        min-height: 55px;
+      }
+
+      .list-wrapper .list {
+        overflow: auto;
+        position: relative;
+        float: right;
+        box-sizing: border-box;
+        width: 72%;
+        max-height: 81px;
+      }
+
+      .list-wrapper h4 {
+        padding: 10px 15px;
+        float: left;
+        box-sizing: border-box;
+        width: 25%;
+        margin: 0;
+        font-weight: 500;
+        font-size: 14px;
+      }
+
+      .list-group .list-item {
+        display: block;
+        list-style-type: none;
+        margin: 0;
+        padding: 0 15px;
+        box-sizing: border-box;
+      }
+
+      .list-group .list-form {
+        display: none;
+      }
+
+      .list-group.focused .list-item, .list-group.is-invalid .list-item, .list-group.is-blank .list-item {
+        display: none;
+      }
+
+      .list-group.focused .list-form, .list-group.is-invalid .list-form, .list-group.is-blank .list-form {
+        display: block;
+      }
+
+      paper-checkbox input[type=checkbox] {
+        display: none;
+      }
+
+    </style>
+    <!-- TODO: structures should be arrays to preserve order -->
+    <form id="rails_form" _action="{{ action }}" method="{{ method }}" enctype="multipart/form-data">
+      <template bind="{{ data as data }}">
+        <template bind="{{ structure as structure }}" bind="{{ scope as scope }}" id="form-group">
+          <template repeat="{{ key in structure | getKeys }}">
+            <div class='{{ structure[key] | wrapperClass }} {{ key }} {{ structure[key] | isHidden }}'>
+              <template if="{{ structure[key] | isNest }}">
+                <template if="{{ structure[key].allowAdd }}">
+                  <paper-button class='{{ key | scopeToClass }}' on-click="{{ addItem }}"><core-icon icon="add-circle-outline"></core-icon>{{ structure[key].label }}</paper-button>
+                </template>
+                <template if="{{ structure[key] | isMultiple }}">
+                  <template if="{{ !structure[key].allowAdd }}">
+                    <template repeat="{{ item in data | scopeNestData(key) | enumerate }}">
+                      <template ref="form-group" bind="{{ structure[key].structure as structure }}" parentContext="{{ key | updateParentContext }}" scope="{{ scope | updateScope(key) | addIndex(item) }}" data="{{ data | scopeDataToIndex(item) }}"></template>
+                    </template>
+                  </template>
+
+                  <template if='{{ structure[key].allowAdd }}'>
+                    <template bind="{{ data as data }}">
+                      <div class='list'>
+                        <template repeat="{{ item in data | scopeNestData(key) | enumerate }}">
+                          <div class='list-group {{ item | isEmpty }}'>
+                            <div class='list-item {{ item | listItemClassName }}'>
+                              {{ item | createListItem }}
+                            </div>
+                            <div class='list-form {{ item | listItemClassName }}'>
+                              <template ref="form-group" bind="{{ structure[key].structure as structure }}" parentContext="{{ key | updateParentContext }}" scope="{{ scope | updateScope(key) | addIndex(item) }}" data="{{ data | scopeDataToIndex(item) }}"></template>
+                            </div>
+                          </div>
+                        </template>
+                      </div>
+                    </template>
+                  </template>
+                </template>
+
+                <template if="{{ structure[key] | isNotMultiple }}">
+                  <template bind="{{ context as context }}">
+                    <template ref="form-group" bind="{{ structure[key].structure as structure }}" parentContext="{{ key | updateParentContext }}" scope="{{ scope | updateScope(key) }}" data="{{ data | scopeNestData(key) }}"></template>
+                  </template>
+                </template>
+              </template>
+              
+              <template if="{{ structure[key] | isField }}">
+                <template bind="{{ data as data }}">
+                  <div class="input {{ key | scopeToClass }}" scope="{{ data | scopeFieldData(key) }}">
+                    {{ structure[key] | createInput }}
+                  </div>
+                </template>
+              </template>
+            </div>
+          </template>
+        </template>
+      </template>
+      <div class='sumbit-button-wrapper'>
+        <paper-button id='submit-button' raised>{{ submitText }}</paper-button>
+        <template if="{{ xhr }}">
+          <core-xhr id='xhr'></core-xhr>
+        </template>
+      </div>
+    </form>
+  </template>
+  <script>
+    /*
+      Default Structure Item: {
+        type: "string",
+        label: "",
+        options: {
+          floatingLabel: true,
+          unscoped: false,
+          events: {}
+        },
+        attributes: {
+
+        }
+      }
+    */
+
+    Polymer( Polymer.mixin ({
+      publish: {
+        scope: "",
+        action: "",
+        method: "POST",
+        structure: null,
+        data: null,
+        submitText: "Submit",
+        xhr: false,
+        onSubmit: null
+      },
+
+      parentContext: null,
+      parentStructure: null,
+      parentData: null,
+
+      toArray: function(str){
+        return [str];
+      },
+
+      created: function(){
+        this.structure = {};
+        this.data = {};
+        this.inputList = [];
+      },
+
+      handleXhrCallback: function(){
+
+      },
+
+      domReady: function(){
+        var form = this.shadowRoot.querySelector("form"),
+            button = this.shadowRoot.querySelector("paper-button");
+        
+        button.addEventListener("click", function(e){
+          if (this.action !== null){
+            if (this.xhr){
+              this.$.xhr.request({ method: this.method, url: this.action, params: this.data, callback: this.handleXhrCallback })
+            } else {
+              form.submit();
+            }
+          }
+        }.bind(this), false)
+
+        this.appendInputs();
+
+        var inputObserver = new ArrayObserver(this.inputList);
+            inputObserver.open(function(splices){
+              this.appendInputs();
+            }.bind(this))
+
+        form.addEventListener("change", function(e){
+          var group = this.findParent(e.target, ".list-group")
+          if (!!group){
+            this.checkForBlank(group);
+          }
+        }.bind(this), true)
+
+      },
+
+      get getData() {
+        return this.data;
+      }
+    }, FormHelpers, Validation));
+  </script>
+</polymer-element>

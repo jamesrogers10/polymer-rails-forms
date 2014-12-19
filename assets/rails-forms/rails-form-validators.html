@@ -1,0 +1,106 @@
+<script>
+	var Validation = {
+		errors: {},
+
+		addValidation: function(type, input){
+			//TODO should validate everything
+		    if (this.structure[this.key].required){
+		        input.addEventListener("change", function(){
+		          this.validate(this.structure[this.key].type, input);
+		        }.bind(this), false)
+		    } else if (!!this.structure[this.key].validates){
+		    	input.addEventListener("change", function(){
+		    		this[this.structure[this.key].validates](type, input)
+		    	}.bind(this), false)
+		    }
+		},
+
+		invalidate: function(type, input, isInvalid){
+			var parent = this.findParent(input, 'gc-input-decorator'),
+				wrapper = this.findParent(input, '.input-wrapper'),
+				group = this.findParent(input, '.list-group'),
+				form = this.shadowRoot.querySelector("form");
+			
+			if (!!parent) parent.isInvalid = isInvalid;
+			if (isInvalid){
+				this.errors[input.id] = "ERROR!!!!!!!!!"
+				if (!!wrapper) this.addClass(wrapper, "is-invalid");
+				if (!!group) this.addClass(group, "is-invalid");
+			} else {
+				delete this.errors[input.id];
+				if (!!wrapper) this.removeClass(wrapper, 'is-invalid');
+				if (!!group) this.removeClass(group, "is-invalid");
+			}
+
+			if (Object.keys(this.errors).length === 0){
+				if (!!form) this.removeClass(form, 'has-errors')
+			} else {
+				if (!!form) this.addClass(form, 'has-errors')
+			}
+		},
+
+		validate: function(type, input, required, invalidate){
+			required = required || input.required;
+			invalidate = invalidate || true;
+
+			var validators = {
+				string: function(){
+		        	return !(required && input.value.replace(/(^ *| *$)/g, "").length > 0);
+		        },
+
+		        email: function(){
+		         	return !(required && /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(input.value))
+		        },
+
+		        hidden: function(){
+					return false;		          
+		        }.bind(this),
+
+		        json: function(){
+		         	return false
+		        }.bind(this),
+
+		        password: function(){
+		        	return !(required && input.value.length > 0);
+		        }.bind(this),
+
+		        integer: function(){
+		        	console.log("checking integer", isNaN(input.value))
+		         	return !(required && !isNaN(input.value))
+		        }.bind(this),
+
+		        url: function(){
+		          return !(required && /^(ht|f)tps?:\/\/[a-z0-9-\.]+\.[a-z]{2,4}\/?([^\s<>\#%"\,\{\}\\|\\\^\[\]`]+)?$/.test(input.value))
+		        }.bind(this),
+
+		        textarea: function(){
+		        	return !(required && input.value.replace(/(^ *| *$)/g, "").length > 0);
+		        }.bind(this),
+
+		        checkbox: function(){
+		        	return false
+		        }.bind(this),
+
+		        date: function(){
+		         	return false
+		        }.bind(this),
+
+		        location: function(){
+		         	return false
+		        }.bind(this),
+
+		        image: function(){
+		        	return !(required && input.value.length > 0)
+		        }.bind(this)
+			}
+
+			var isInvalid = (!!validators[type] && validators[type]())
+			
+			if (invalidate){
+				this.invalidate(type, input, isInvalid);
+			}
+
+			return isInvalid;
+		}
+	}
+</script>

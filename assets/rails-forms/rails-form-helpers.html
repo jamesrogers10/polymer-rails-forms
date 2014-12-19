@@ -1,0 +1,744 @@
+<script>
+  /* TODO clean this up */
+  var FormHelpers = {
+    /* Utility things */
+    log: function(o){
+      console.log("Data", o)
+    },
+
+    capitalize: function(str){
+    	if (str && str.length > 1){
+    		return str.split(" ").map( function(s){ return s[0].toUpperCase() + s.substr(1) } ).join(" ");
+    	} else {
+    		return "";
+    	}
+    },
+
+    findParent: function(el, selector){
+      var parent = el.parentNode;
+
+      if (parent !== null){
+        if (parent.querySelector(selector) !== null){
+          return el;
+        } else {
+          return this.findParent(parent, selector)
+        }
+      } else {
+        return null;
+      }
+    },
+
+    addClass: function(el, cls){
+      var reg = new RegExp("\\s/+" + cls, "g")
+      this.removeClass(el, cls);
+      el.className = el.className + " " + cls;
+    },
+
+    removeClass: function(el, cls){
+      var reg = new RegExp("\\s+" + cls, "g")
+      el.className = el.className.replace(reg, "");
+    },
+
+    hasClass: function(el, cls){
+      var reg = new RegExp("\\s+" + cls, "g")
+      return reg.test(el.className);
+    },
+
+    indexStore: {},
+    genIndexStoreKey: function(){
+      var key = "_" + ((Math.random() * 1000000) | 0); 
+      while(this.indexStore[key] !== void(0)){
+        key = "_" + ((Math.random() * 1000000) | 0);
+      }
+
+      return key;
+    },
+
+    addToIndexStore: function(obj, index){
+      var key = this.genIndexStoreKey();
+      this.indexStore[key] = {obj: obj, index: index}
+    },
+
+    removeFromIndexStore: function(obj){
+      for (var x in this.indexStore){
+        if (this.indexStore[x].obj === obj) delete this.indexStore[x];
+      }
+    },
+
+    updateIndex: function(obj, index){
+      for (var x in this.indexStore){
+        if (this.indexStore[x].obj === obj) this.indexStore[x].index = index;
+      }
+    },
+
+    enumerate: function(obj){
+      //TODO: keygen should check for uniquness
+    	for (var i=0; i<obj.length; i++){
+        this.addToIndexStore(obj[i], i)
+      }
+
+      return obj
+    },
+
+    getIndex: function(obj){
+      for (var x in this.indexStore){
+        if (this.indexStore[x].obj === obj) return this.indexStore[x].index;
+      }
+    },
+
+    /* Type Checks */
+
+    getKeys: function(o){
+      return Object.keys(o);
+    },
+
+    isArray: function(v){
+      return Array.isArray(v);
+    },
+
+    isNotArray: function(v){
+      return !Array.isArray(v);
+    },
+
+    isNest: function(v){
+    	return v.type === "nest";
+    },
+
+    isField: function(v){
+      return v.type !== "nest";
+    },
+
+    isMultiple: function(s){
+    	return s.multiple;
+    },
+
+    isNotMultiple: function(s){
+    	return !s.multiple
+    },
+
+    isHidden: function(o){
+      return o.type === 'hidden' ? "hidden" : "";
+    },
+
+    isEmpty: function(o){
+      var blank = true;
+      for (var x in this.structure[this.key].structure){
+        if (!blank) break;
+        if (this.structure[this.key].structure[x].type !== 'nest'){
+          if (this.structure[this.key].structure[x].type === 'json'){
+            for (var y in o[x]){
+              if (typeof o[x][y] !== 'object'){
+                if (!(o[x][y] === null || o[x][y].length === 0)){ 
+                  blank = false;
+                  break;
+                }
+              }
+            }
+          } else {
+            console.log(!(o[x] === null || o[x].length === 0))
+            if (!(o[x] === null || o[x].length === 0)){
+              blank = false;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!blank){
+        return "";
+      } else {
+        return "is-blank";
+      }
+    },
+
+    exists: function(o, key){
+      return o[key] !== void(0)
+    },
+
+    notExists: function(o, key){
+      return o[key] === void (0)
+    },
+
+    displayableField: function(field){
+      return ["string"].indexOf(field.type) !== -1;
+    },
+
+    /* Scope things */
+    wrapperClass: function(structure){
+      if (structure.type === "nest"){
+        if (structure.allowAdd) {
+          return 'wrapper list-wrapper'
+        } else {
+          return 'wrapper'
+        }
+      } else {
+        return 'input-wrapper'
+      }
+    },
+
+    addIndex: function(scope, obj){
+      var index = this.getIndex(obj);
+
+      this.scope = this.structure[this.key].multiple ? scope + "[" + index + "]" : scope;
+    	return this.scope;
+    },
+
+    addItem: function(e, d, t){
+      var parent = this.findParent(t, ".list-wrapper"),
+          items = parent.querySelectorAll(".list-form"),
+          invalid = parent.querySelectorAll(".input-wrapper.is-invalid input")[0];
+
+      for (var i=0; i<items.length; i++){
+        var inputs = items[i].querySelectorAll("input"),
+            blank = true;
+
+        for (var j=0; j<inputs.length; j++){
+          if (inputs[j].value.replace(/\s/g, "").length !== 0){ blank = false; break; }
+        }
+
+        if (blank){
+          invalid = inputs[0];
+          break;
+        }
+      }
+
+      if (!invalid){
+        var data = this.classToData(t.className),
+            newData = {};
+
+        this.addToIndexStore(newData, data.length);
+        data.push(newData)
+      } else {
+        invalid.focus();
+      }
+    },
+
+    updateScope: function(key){
+      var scope = this.scope + "[" + this.key + "_attributes]";      
+      this.scope = scope;
+      return this.scope;
+    },
+
+    scopeFieldData: function(data, key){
+      if (data[key] === void(0)) data[key] = null;
+      return data;
+    },
+
+    scopeNestData: function(data, key){
+    	if (this.structure[key].multiple){
+    		if (data[key] === void(0)){
+          if (this.structure[key].allowAdd) {
+            data[key] = [];
+          } else {
+            data[key] = [{}];
+          }
+        }
+
+        this.data = data[key];
+    	} else {
+    		if (data[key] === void(0)) data[key] = {};
+    		this.data = data[key];
+    	}
+    	
+    	return this.data;
+    },
+
+    updateParentContext: function(key){
+      this.parentContext = key;
+      this.parentStructure = this.structure;
+      this.parentData = this.data;
+    },
+
+    scopeDataToIndex: function(data, obj){
+      var index = this.getIndex(obj);
+
+      this.data = this.data[index];
+    	return this.data
+    },
+
+    listItemClassName: function(obj){
+      return  this.key + "-" + this.getIndex(obj);
+    },
+
+    /* Effects */
+    freezeElement: function(el){
+      var left = el.offsetLeft,
+          top = el.offsetTop;
+
+      el.style.position = 'absolute';
+      el.style.left = left;
+      el.style.top = top;
+    },
+
+    freezeFormCoords: { width: null, height: null, oWidth: null, oHeight: null },
+    freezeCoords: [],
+    freezeForm: function(selectors){
+      selectors = selectors || ".input-wrapper, .wrapper, .list-item, .sumbit-button-wrapper, #submit-button";
+
+      var form = this.shadowRoot.querySelector("form"),
+          elements = this.shadowRoot.querySelectorAll(selectors);
+      
+      this.freezeFormCoords = {
+        width: parseInt(form.offsetWidth, 10), 
+        height: parseInt(form.offsetHeight, 10),
+        oWidth: form.style.width,
+        oHeight: form.style.height
+      },
+          
+      this.addClass(form, 'frozen');
+      form.style.width = this.freezeFormCoords.width + "px";
+      form.style.height = this.freezeFormCoords.height + "px";
+
+      this.freezeCoords = [];
+      for (var i=0; i<elements.length; i++){
+        this.freezeCoords[i] = {};
+        this.freezeCoords[i].element = elements[i];
+        this.freezeCoords[i].top = parseInt(elements[i].offsetTop, 10);
+        this.freezeCoords[i].left = parseInt(elements[i].offsetLeft, 10);
+        this.freezeCoords[i].oTop = elements[i].style.top;
+        this.freezeCoords[i].oLeft = elements[i].style.left;
+        this.freezeCoords[i].oPos = elements[i].style.position;
+      }
+
+      for (var i=0; i<this.freezeCoords.length; i++){
+        this.freezeCoords[i].element.style.top = this.freezeCoords[i].top + "px";
+        this.freezeCoords[i].element.style.left = this.freezeCoords[i].left + "px";
+        this.freezeCoords[i].element.style.position = 'absolute';
+      }
+    },
+
+    unfreezeForm: function(){
+      var form = this.shadowRoot.querySelector("form");
+      
+      for (var i=0; i<this.freezeCoords.length; i++){
+        this.freezeCoords[i].element.style.top = this.freezeCoords[i].oTop;
+        this.freezeCoords[i].element.style.left = this.freezeCoords[i].oLeft;
+        this.freezeCoords[i].element.style.position = this.freezeCoords[i].oPos;
+      }
+
+      form.style.width = this.freezeFormCoords.oWidth;
+      form.style.height = this.freezeFormCoords.oHeight;
+      this.removeClass(form, 'frozen');
+    },
+
+    /* Creating Element */
+    createListItem: function(obj){
+      var className = this.listItemClassName(obj),
+          isEmpty = Object.keys(obj).length === 0,
+          container = document.createElement("div");
+          this.addClass(container, "list-item-display")
+      
+      if (this.structure[this.key].display_fields){
+        for (var i=0; i<this.structure[this.key].display_fields.length; i++){
+          var field = this.structure[this.key].display_fields[i],
+              baseField = field.split(".")[0],
+              nameField = field.split(".")[field.split(".").length - 1]
+          
+          var el = document.createElement("div"),
+              label = this.createWithAttributes("span", { text: this.capitalize(nameField.replace(/_/g, " ")) + ": " });
+          
+          var value = document.createElement("span"),
+              val = document.createTextNode("");
+              
+              if (this.structure[this.key].structure[field.split(".")[0]].type === "json"){
+                var struct = field.split("."),
+                    o = obj;
+
+                for (var j=0; j<struct.length - 1; j++){
+                  //TODO: this doesn't account for Arrays... which I'm fine with for now. 
+                  if (!obj[struct[j]]) obj[struct[j]] = {};
+                  o = o[struct[j]]
+                }
+
+                var f = struct[struct.length - 1]
+                if (!o[f]) o[f] = "";
+                val.bind("textContent", new PathObserver(obj, field))
+              } else {
+                if (!obj[baseField]) obj[baseField] = "";
+                val.bind("textContent", new PathObserver(obj, field));  
+              }
+              
+          el.appendChild(label)
+          el.appendChild(value)
+          value.appendChild(val)
+
+          container.appendChild(el);
+        }
+      } else {
+        container.appendChild(this.createWithAttributes("div", {text: "item " + (this.getIndex(obj) + 1)}))
+      }
+    
+      var self = this;
+      this.inputList.push({ element: container, container: ".list-item." + className, events: {} })
+
+      container.addEventListener("click", function(e){
+        var stop = function(e){ e.stopPropagation(); }
+            group = self.findParent(container, ".list-group"),
+            first_input = group.querySelector(".input-wrapper gc-input-decorator");
+        
+        stop(e);
+        var alreadyFocued = self.shadowRoot.querySelectorAll(".list-group.focused");
+        for (var i=0; i<alreadyFocued.length; i++){
+          self.removeClass(alreadyFocued[i], 'focused')
+        }
+
+        first_input.focused = true;
+        setTimeout(function(){
+          first_input.querySelector("input").focus();  
+        }, 100)
+        
+        self.addClass(group, "focused");
+        group.addEventListener("click", stop, false);
+        window.addEventListener("click", function(e){
+          window.removeEventListener("click", arguments.callee)
+          group.removeEventListener("click", stop)
+          self.removeClass(group, "focused");  
+        }, false)
+      }, false)
+    },
+
+    createInput: function(structure){
+    	var default_structure = {
+        type: "string",
+        label: "",
+        options: {
+          floatingLabel: true,
+          unscoped: false,
+          events: {}
+        },
+        attributes: {
+
+        }
+      }
+
+      function setOptions(obj, defaults){
+        for (var x in defaults){
+          if (typeof defaults[x] === 'object'){
+            if (obj[x] === void(0)) obj[x] = {};
+            setOptions(obj[x], defaults[x]);
+          } else {
+            if (obj[x] === void(0)){
+              obj[x] = defaults[x];
+            }
+          }
+        }
+      }
+
+      setOptions(structure, default_structure);
+      var el = this.getElement(structure),
+          obj = { element: el, container: "." + this.scopeToClass(this.key), events: structure.options.events };
+
+      this.inputList.push(obj)
+    },
+
+    scopeToClass: function(key){
+    	var className = this.scope.replace(/\[/g, "_").replace(/\]/g, "") + "_" + key;
+    	return className;
+    },
+
+    classToData: function(className){
+      var cn = className.split("_").slice(1).join("_"),
+          data = this.data;
+
+      function nest(str){
+        var p = str.split("_attributes_");
+        if (p.length > 1){ 
+          data = data[p[0]]
+          cn = p.slice(1).join("_attributes_");
+          return true;
+        } else {
+          return false
+        }
+      }
+
+      function arr(str){
+        var p = str.split("_");
+        if (p.length > 1 && !isNaN(p[0])){ 
+          data = data[p[0]];
+          cn = p.slice(1).join("_");
+          return true;
+        } else {
+          return false
+        }
+      }
+
+      while (nest(cn) || arr(cn)){  }
+      return data[cn];
+    },
+
+    checkForBlank: function(group){
+      var inputs = group.querySelectorAll("input"),
+          blank = true;
+      
+      for (var i=0; i<inputs.length; i++){
+        if (inputs[i].value.replace(/\s/g, "").length !== 0){
+          blank = false;
+          break;
+        }
+      }
+
+      if (blank){
+        this.addClass(group, 'is-blank');
+      } else {
+        this.removeClass(group, 'is-blank');
+      }
+    },
+
+    updateFieldScope: function(){
+    	return this.structure[this.key].options.unscoped ? this.key : this.scope + "[" + this.key + "]"
+    },
+
+    getElement: function(structure){
+      var inputs = {
+        string: function(){
+          return this.createBasicInput("text");
+        }.bind(this),
+
+        email: function(){
+          return this.createBasicInput("text");
+        },
+
+        hidden: function(){
+          return this.createBasicInput("hidden");
+        }.bind(this),
+
+        json: function(){
+          return this.createJSONField(structure.fields);
+        }.bind(this),
+
+        password: function(){
+          return this.createBasicInput("password");
+        }.bind(this),
+
+        integer: function(){
+          return this.createBasicInput("text");
+        }.bind(this),
+
+        url: function(){
+          return this.createBasicInput("text");
+        }.bind(this),
+
+        textarea: function(){
+          return this.createBasicInput("textarea")
+        }.bind(this),
+
+        checkbox: function(){
+          var box = document.createElement("paper-checkbox"),
+              input = this.createWithAttributes('input', {type: "checkbox", name: this.updateFieldScope()});
+
+          box.label = this.capitalize(this.structure[this.key].label || this.key);
+          box.appendChild(input);
+
+          box.addEventListener("change", function(e){
+            this.data[this.key] = e.target.checked ? 1 : 0;
+            input.checked = e.target.checked;
+          }.bind(this), false)
+
+          return box;
+
+        }.bind(this),
+
+        date: function(){
+          var wrapper =  this.createBasicInput("text"),
+              input = wrapper.querySelector("input");
+
+          var picker = new Pikaday({ field: input, bound: false });
+
+          input.addEventListener("focus", function(){
+            picker.show();
+          });
+
+          return wrapper;
+        }.bind(this),
+
+        location: function(){
+          var wrapper = document.createElement("gc-input-decorator"),
+              input = document.createElement( "input" );
+          //google-location-input
+          if (!this.data[this.key]) this.data[this.key] = { value: null, lat: null, lng: null }
+
+          wrapper.label = this.capitalize(this.structure[this.key].label || this.key);
+          wrapper.floatingLabel = this.structure[this.key].options.floatingLabel;
+
+          input.type = "text";
+          input.name = this.updateFieldScope();
+          input.bind('value', new PathObserver(this.data[this.key], "value"))
+
+          var autocomplete = new google.maps.places.Autocomplete(
+            input, { types: ['(cities)'] }
+          );
+
+          var self = this;
+          google.maps.event.addListener(autocomplete, 'place_changed', function () {
+            var place = autocomplete.getPlace();
+            
+            self.data[self.key].value = input.value;
+            self.data[self.key].lat = place.geometry.location.lat();
+            self.data[self.key].lng = place.geometry.location.lng();
+
+            if (self.structure[self.key].options.events.select){
+              self.structure[self.key].options.events.select(self.data[self.key])
+            }
+          })
+
+          wrapper.appendChild(input);
+          return wrapper;
+        }.bind(this),
+
+        image: function(){
+          var wrapper = this.createWithAttributes("span", { "class": "btn-image-upload" }),
+              input = this.createWithAttributes("input", { type: "file", name: this.updateFieldScope() }),
+              icon_wrapper = this.createWithAttributes("div", {"class": "image-icon-wrapper"}),
+              explanation = this.createWithAttributes("p", {text: "Click here to upload an image"}),
+              icon = this.createWithAttributes("core-icon", {icon: "image:photo"});
+      
+          icon_wrapper.appendChild(icon);
+          wrapper.appendChild(input);
+          wrapper.appendChild(icon_wrapper);
+          wrapper.appendChild(explanation);
+
+          this.addValidation('image', input)
+          input.addEventListener("click", function(e){ e.stopPropagation(); }, true)
+          
+          var self = this;
+          input.addEventListener("change", function(){
+            if (this.files.length){
+              var oFReader = new FileReader();
+              oFReader.readAsDataURL(this.files[0]);
+
+              oFReader.onload = function (oFREvent) {
+                  wrapper.parentNode.style.backgroundImage = "url(" + oFREvent.target.result + ")";
+                  self.addClass(wrapper.parentNode, "has-image");
+              };
+            } else {
+              self.removeClass(wrapper.parentNode, 'has-image');
+              wrapper.parentNode.style.backgroundImage = "";
+            }
+          }, true)
+
+          return wrapper;
+        }.bind(this),
+
+        html: function(){
+          var content = document.createElement('div');
+          content.innerHTML = this.structure[this.key].content;
+          return content;
+        }.bind(this)
+
+      }
+
+      try {
+        return inputs[structure.type]()
+    	} catch(e){
+    		throw "Unknown field type: " + structure.type
+    	}
+    },
+
+    appendInputs: function(){
+      for (var i=0; i<this.inputList.length; i++){
+        var obj = this.inputList[i],
+            container = this.shadowRoot.querySelector(obj.container);
+      
+        //TODO: insert points
+        if (!obj.position || obj.position === 'append'){
+          if (this.findParent(obj.element, obj.container) === null){
+            container.appendChild(obj.element)
+          }
+        } else if (!!obj.position && obj.position === 'before') {
+          if ([].indexOf.call(container.parentNode.childNodes, obj.element) === -1){
+            container.parentNode.insertBefore(obj.element, container)
+          }
+        }
+        
+        if (!!obj.events.onFocus) container.addEventListener("focus", obj.events.onFocus, false);
+        if (!!obj.events.onBlur) container.addEventListener("blur", obj.events.onBlur, false);
+      }
+    },
+
+    createBasicInput: function(type, name, label){
+      var wrapper = document.createElement("gc-input-decorator"),
+      		input = document.createElement( type === "textarea" ? "textarea" : "input" );
+      
+      wrapper.label = this.capitalize(label || this.structure[this.key].label || this.key);
+      wrapper.floatingLabel = this.structure[this.key].options.floatingLabel;
+      
+      input.type = type;
+ 			input.name = name || this.updateFieldScope();
+      input.id = this.scopeToClass(this.key)
+ 			if (this.structure[this.key].required) input.required = true;
+      input.bind('value', new PathObserver(this.data, this.key)) 
+			
+      this.addValidation(type, input)
+      
+      if (type === 'textarea') input.rows = 3;
+      if (type !== "hidden"){	
+        wrapper.appendChild(input);      
+	      return wrapper;
+	    } else {
+	    	return input;
+	    }
+
+    },
+
+    createJSONField: function(fields){
+      //TODO: only basic JSON support, if you want crazy complicated stuff, just use a textarea or custom input 
+      var wrapper = this.createWithAttributes('div', { "class": "json-wrapper" }),
+          input = this.createWithAttributes("textarea", { name: this.updateFieldScope(), "class": "hidden" }),
+          isList = this.parentStructure !== null && this.parentStructure[this.parentContext].allowAdd;
+
+      if (!this.data[this.key]) this.data[this.key] = {};
+    
+      var observer = new ObjectObserver(this.data[this.key])
+      observer.open(function(){
+        input.value = JSON.stringify(this.data[this.key])
+      }.bind(this))
+       
+      input.bind('value', new PathObserver(this.data, this.key)) 
+
+      wrapper.appendChild(input);
+      for (var i=0; i<fields.length; i++){
+        this.data[this.key][fields[i]] = "";
+        var input_wrapper = this.createWithAttributes("div", { "class": (isList ? "input-wrapper" : "input") + " json-input-wrapper"})
+            decorator = document.createElement("gc-input-decorator"),
+            el = this.createWithAttributes('input');
+
+        input_wrapper.appendChild(decorator);
+        decorator.label = this.capitalize(fields[i]);
+        decorator.floatingLabel = true;
+        decorator.appendChild(el);
+
+        el.bind("value", new PathObserver(this.data[this.key], fields[i]))
+        
+        //TODO: create a parentStruture thing. check the parent structure for isNull or allowAdd
+        //change the container selector appropriately 
+        if (isList){
+          var className = "." + this.parentContext + "-" + this.getIndex(this.data) +  " .input-wrapper." + this.key;
+          var o = { element: input_wrapper, container: className, events: {}, position: "before" }
+        } else {
+          var o = { element: input_wrapper, container:  "." + this.scopeToClass(this.key), events: {} };
+        }
+
+        this.inputList.push(o)
+        //wrapper.appendChild(decorator);
+      }
+
+      return wrapper;
+    },
+
+    createWithAttributes: function(type, attributes){
+      var el = document.createElement(type)
+      if (attributes){
+        for (var x in attributes){
+          if (x === 'text'){
+            var t = document.createTextNode(attributes[x]);
+            el.appendChild(t);
+          } else {
+            el.setAttribute(x, attributes[x]);
+          }
+        }
+      }
+
+      return el;
+    }
+  }
+</script>
