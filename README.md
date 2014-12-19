@@ -108,27 +108,28 @@ you were to set ```allowAdd: true``` the inputs would be in a list with the opti
 
 ##What's supported what's not
 
-So far the field types that are supported are:
+###So far the field types that are supported are:
 
-*string
-*password
-*hidden
-*textarea
-*email
-*url
-*integer
-*date (uses pickaday.js)
-*location (uses google places API, which you'll have to include separately)
-*image (works, but CSS is messed up)
-*checkbox
-*json (limted, only basic objects are supported so far, not nested arrays and objects)
+* string
+* password
+* hidden
+* textarea
+* email
+* url
+* integer
+* date (uses pickaday.js)
+* location (uses google places API, which you'll have to include separately)
+* image (works, but CSS is messed up)
+* checkbox
+* json (limted, only basic objects are supported so far, not nested arrays and objects)
 
-What's not supported 
+###What's not supported 
 
-*radio buttons
-*selects
-*ranges
-*everything else
+* radio buttons
+* selects
+* ranges
+* everything else
 
-Support for radio buttons
+Support for radio buttons, ranges (sliders), and selects will hopefully be coming shortly. 
+Everything else, who knows. This is still a very early release. 
 
