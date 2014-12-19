@@ -67,3 +67,44 @@ polymer element that extends rails-form. Here's the same login form
 
 This syntax gives you the flexibility to add encapulated methods and styles. It's a lot 
 better for complex forms. 
+
+Nested attributes are supported (otherwise what's the point right?). This is that login form 
+again, but this time with nested location attributes
+
+```
+<link rel="import" href="../rails-forms/rails-form.html" >
+<polymer-element name="login-form" extends='rails-form'>
+  <shadow></shadow>
+  
+  <script>
+    Polymer({
+      action: "/users/sign_in",
+      method: "POST",
+      scope: "user",
+      submitText: "Sign In",
+
+      ready: function(){
+        this.structure = {
+	      email: { type: 'string', label: "Email Address" },
+	      password: { type: 'password' },
+	      location: { type: 'nest', allowAdd: false, multiple: false, structure: {
+	          address: { type: "string" },
+    		  city: { type: "string" },
+    		  state: { type: "string" },
+    		  zip: { type: "string" }
+	      	}
+	      }
+        }               
+      }
+    });
+  </script>
+</polymer-element>
+```
+
+This would give the location input the name ```user[location_attributes][city]```. If you were 
+to set ```multiple: true``` the name would become ```user[location_attributes][0][city]```. And if 
+you were to set ```allowAdd: true``` the inputs would be in a list with the option to create more. 
+
+
+##What's supported what's not
+
