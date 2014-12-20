@@ -220,8 +220,10 @@
     },
 
     scopeFieldData: function(data, key){
-      if (data[key] === void(0)) data[key] = null;
-      return data;
+      if (this.structure[this.key].type !== 'html'){
+        if (data[key] === void(0)) data[key] = null;
+        return data;
+      }
     },
 
     scopeNestData: function(data, key){
@@ -610,9 +612,14 @@
                   wrapper.parentNode.style.backgroundImage = "url(" + oFREvent.target.result + ")";
                   self.addClass(wrapper.parentNode, "has-image");
               };
+
+              self.data[self.key] = this.files[0];
+
             } else {
               self.removeClass(wrapper.parentNode, 'has-image');
               wrapper.parentNode.style.backgroundImage = "";
+
+              self.data[self.key] = null;
             }
           }, true)
 
@@ -664,6 +671,7 @@
       
       input.type = type;
  			input.name = name || this.updateFieldScope();
+      input.value = this.structure[this.key].value || "";
       input.id = this.scopeToClass(this.key)
  			if (this.structure[this.key].required) input.required = true;
       input.bind('value', new PathObserver(this.data, this.key)) 

@@ -267,9 +267,8 @@
               this.$.xhr.request({ 
                 method: this.method, 
                 url: this.action, 
-                body: JSON.stringify(data), 
-                callback: this.handleXhrCallback, 
-                headers: { "Content-type": "application/json", "Accept": "application/json" }
+                body: new FormData(form), 
+                callback: this.handleXhrCallback
               })
             } else {
               form.submit();
