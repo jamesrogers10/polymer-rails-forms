@@ -41,7 +41,15 @@
 
     hasClass: function(el, cls){
       var reg = new RegExp("\\s+" + cls, "g")
-      return reg.test(el.className);
+      return reg.test(el.className) || el.className === cls;
+    },
+
+    toggleClass: function(el, cls){
+      if (this.hasClass(el, cls)){
+        this.removeClass(el, cls);
+      } else {
+        this.addClass(el, cls);
+      }
     },
 
     indexStore: {},
@@ -52,6 +60,12 @@
       }
 
       return key;
+    },
+
+    getIndex: function(obj){
+      for (var x in this.indexStore){
+        if (this.indexStore[x].obj === obj) return this.indexStore[x].index;
+      }
     },
 
     addToIndexStore: function(obj, index){
@@ -73,17 +87,19 @@
 
     enumerate: function(obj){
       //TODO: keygen should check for uniquness
-    	for (var i=0; i<obj.length; i++){
-        this.addToIndexStore(obj[i], i)
+    	var used = []; 
+      for (var i=0; i<obj.length; i++){
+        var current_index = this.getIndex(obj[i]);
+        if (current_index) used.push();
+      }
+      
+      for (var i=0; i<obj.length; i++){
+        var index = i;
+        while (used.indexOf(index) !== -1){ index++ }
+        this.addToIndexStore(obj[i], index);
       }
 
       return obj
-    },
-
-    getIndex: function(obj){
-      for (var x in this.indexStore){
-        if (this.indexStore[x].obj === obj) return this.indexStore[x].index;
-      }
     },
 
     /* Type Checks */
@@ -135,7 +151,6 @@
               }
             }
           } else {
-            console.log(!(o[x] === null || o[x].length === 0))
             if (!(o[x] === null || o[x].length === 0)){
               blank = false;
               break;
@@ -206,7 +221,12 @@
         var data = this.classToData(t.className),
             newData = {};
 
-        this.addToIndexStore(newData, data.length);
+        var index = data.length,
+            used = [];
+        for (var i=0; i<data.length; i++){ used.push(this.getIndex(data[i])) }
+        while (used.indexOf(index) !== -1){ index++ }
+
+        this.addToIndexStore(newData, index);
         data.push(newData)
       } else {
         invalid.focus();
@@ -214,20 +234,25 @@
     },
 
     updateScope: function(key){
-      var scope = this.scope + "[" + this.key + "_attributes]";      
+      var scope = this.structure[this.key].unscoped ? this.key : this.scope + "[" + this.key + "_attributes]";      
+      
       this.scope = scope;
       return this.scope;
     },
 
     scopeFieldData: function(data, key){
+      data = this.structure[this.key].unscoped ? this.unscopedData : data;
+      //console.log("field", key, data[key]);
       if (this.structure[this.key].type !== 'html'){
-        if (data[key] === void(0)) data[key] = null;
+        if (data[key] === void(0)) data[key] = this.structure[this.key].value || null;
         return data;
       }
     },
 
     scopeNestData: function(data, key){
-    	if (this.structure[key].multiple){
+    	data = this.structure[this.key].unscoped ? this.unscopedData : data;
+      //console.log("nest", key, data[key]);
+      if (this.structure[key].multiple){
     		if (data[key] === void(0)){
           if (this.structure[key].allowAdd) {
             data[key] = [];
@@ -327,9 +352,8 @@
     createListItem: function(obj){
       var className = this.listItemClassName(obj),
           isEmpty = Object.keys(obj).length === 0,
-          container = document.createElement("div");
-          this.addClass(container, "list-item-display")
-      
+          container = this.createWithAttributes("div", {'class': "list-item-display"});
+           
       if (this.structure[this.key].display_fields){
         for (var i=0; i<this.structure[this.key].display_fields.length; i++){
           var field = this.structure[this.key].display_fields[i],
@@ -338,7 +362,8 @@
           
           var el = document.createElement("div"),
               label = this.createWithAttributes("span", { text: this.capitalize(nameField.replace(/_/g, " ")) + ": " });
-          
+              
+
           var value = document.createElement("span"),
               val = document.createTextNode("");
               
@@ -359,17 +384,39 @@
                 if (!obj[baseField]) obj[baseField] = "";
                 val.bind("textContent", new PathObserver(obj, field));  
               }
-              
-          el.appendChild(label)
-          el.appendChild(value)
-          value.appendChild(val)
+          
+          el.appendChild(label);
+          el.appendChild(value);
+          value.appendChild(val);
 
           container.appendChild(el);
         }
       } else {
         container.appendChild(this.createWithAttributes("div", {text: "item " + (this.getIndex(obj) + 1)}))
       }
-    
+      
+      var remove_button = this.createWithAttributes("core-icon", {icon: 'clear'}); 
+      remove_button.addEventListener("click", function(e){
+        e.stopPropagation();
+        var clone = this.parentData.slice(0);
+        clone.splice(clone.indexOf(obj), 1);
+
+        while (this.parentData.length){ 
+          this.removeFromIndexStore(this.parentData[0]);
+          this.parentData.shift();
+        }
+
+        this.async(function(){
+          for (var i=0; i<clone.length; i++){ 
+            this.addToIndexStore(clone[i], i);
+            this.parentData.push(clone[i]);
+          }
+        });
+
+      }.bind(this), false)
+
+      container.appendChild(remove_button);
+
       var self = this;
       this.inputList.push({ element: container, container: ".list-item." + className, events: {} })
 
@@ -434,14 +481,26 @@
     },
 
     scopeToClass: function(key){
-    	var className = this.scope.replace(/\[/g, "_").replace(/\]/g, "") + "_" + key;
-    	return className;
+      if (this.structure[this.key].unscoped){
+        var className = key
+      } else {
+    	  var className = this.scope.replace(/\[/g, "_").replace(/\]/g, "") + "_" + key;
+    	}
+      return className;
     },
 
-    classToData: function(className){
-      var cn = className.split("_").slice(1).join("_"),
-          data = this.data;
+    classToData: function(cn){
+      var self = this,
+          data = this.unscopedData;
 
+      for (var x in self.unscopedData){
+        if (cn.substr(0, x.length) === x){
+          cn = cn.replace(new RegExp(x + "_?"), "");
+          data = data[x];
+          break;
+        }
+      }
+      
       function nest(str){
         var p = str.split("_attributes_");
         if (p.length > 1){ 
@@ -465,7 +524,7 @@
       }
 
       while (nest(cn) || arr(cn)){  }
-      return data[cn];
+      return cn.length > 0 ? data[cn] : data;
     },
 
     checkForBlank: function(group){
@@ -553,6 +612,96 @@
           return wrapper;
         }.bind(this),
 
+        select: function(){
+          var structure = this.structure[this.key],
+              values = structure.values;
+
+          var wrapper = this.createWithAttributes("div", {"class": "select-wrapper"}),
+              decorator = this.createWithAttributes("gc-input-decorator", { label: this.capitalize(structure.label || this.key), floatingLabel: structure.options.floatingLabel}),
+              secretInput = this.createWithAttributes('input', {type: 'hidden', name: this.updateFieldScope()}),
+              input = this.createWithAttributes("input", { type: "text", name: "", "class": "pseudo-select-input", disabled: true }),
+              select = this.createWithAttributes("core-selector", {valueattr: "val", "class": "pseudo-select", multi: (!!structure.multi) });
+          
+          secretInput.bind('value', new PathObserver(this.data, this.key));
+          select.bind('selected', new PathObserver(this.data, this.key));
+
+          if (!structure.blank){ 
+            this.data[this.key] = values.length > 0 ? values[0][0] : "";
+            input.value = values.length > 0 ? values[0][1] : "";
+          }
+          var self = this;
+
+          select.addEventListener("click", function(e){
+            if (!!self.structure[self.key].multi) e.stopPropagation();
+          }, false);
+
+          decorator.addEventListener('click', function(e){
+            if (self.hasClass(wrapper, 'opened')) return;
+
+            e.stopPropagation();
+            decorator.updateLabelVisibility("down");
+            self.addClass(wrapper, 'opened');
+            
+            window.addEventListener('click', function(){
+              self.removeClass(wrapper, 'opened');
+              window.removeEventListener('click', arguments.callee);
+            }, false);
+          }, false);
+
+          select.addEventListener('core-select', function(){
+            if (!self.structure[self.key].multi) self.removeClass(wrapper, 'opened');
+            decorator.updateLabelVisibility(select.selected ? select.selected : "");
+
+            self.async(function(){
+              if (!!structure.multi){
+                input.value = select === null ? "" : select.selectedItem.map(function(s){ return s.textContent }).join(', ');
+                secretInput.value = JSON.stringify( select.selectedItem.map(function(s){ return s.getAttribute('val') }) );
+              } else {
+                input.value = select === null ? "" : select.selectedItem.textContent;
+                secretInput.value = select.selectedItem.getAttribute('val');
+              }
+            });
+          }, false);
+          
+          var build_options = function(){
+            while (select.firstChild) { select.removeChild(select.firstChild) };
+            if (structure.blank) select.appendChild(this.createWithAttributes("div", {val: "", text: "" }))
+            for (var i=0; i<structure.values.length; i++){
+              var div = self.createWithAttributes("div", {val: structure.values[i][0], text: structure.values[i][1] });
+              
+              if (!!structure.multi){
+                var checkbox = this.createWithAttributes("paper-checkbox", {"class": "select-check"});
+                div.appendChild(checkbox);
+                div.addEventListener("click", function(el, box){
+                  this.async(function(){
+                    box.checked = this.hasClass(el, 'core-selected');
+                  }.bind(this));
+                }.bind(this, div, checkbox), false)
+              }
+              select.appendChild(div);
+            }
+
+            var nil = structure.values.length === 0 ? self.addClass(wrapper, 'is-blank') : self.removeClass(wrapper, 'is-blank');
+                nil = structure.values.length === 1 ? self.addClass(wrapper, 'is-single') : self.removeClass(wrapper, 'is-single');
+          }.bind(this);
+
+          build_options();
+          new PathObserver(structure, 'values').open(function(){
+            build_options();
+          })
+
+          new PathObserver(structure, 'label').open(function(){
+            decorator.label = this.capitalize(this.structure[this.key].label || this.key) 
+          }.bind(this));
+
+          wrapper.appendChild(decorator);
+          decorator.appendChild(this.createWithAttributes("core-icon", {icon: "expand-more", "class": 'select-icon'}));
+          decorator.appendChild(input);
+          wrapper.appendChild(select);
+          wrapper.appendChild(secretInput);
+          return wrapper;
+        }.bind(this),
+
         location: function(){
           var wrapper = document.createElement("gc-input-decorator"),
               input = document.createElement( "input" );
@@ -578,8 +727,8 @@
             self.data[self.key].lat = place.geometry.location.lat();
             self.data[self.key].lng = place.geometry.location.lng();
 
-            if (self.structure[self.key].options.events.select){
-              self.structure[self.key].options.events.select(self.data[self.key])
+            if (!!self.structure[self.key].events.select){
+              self.structure[self.key].events.select(self.data[self.key])
             }
           })
 
@@ -614,7 +763,6 @@
               };
 
               self.data[self.key] = this.files[0];
-
             } else {
               self.removeClass(wrapper.parentNode, 'has-image');
               wrapper.parentNode.style.backgroundImage = "";
@@ -671,7 +819,7 @@
       
       input.type = type;
  			input.name = name || this.updateFieldScope();
-      input.value = this.structure[this.key].value || "";
+      input.value = this.structure[this.key].value || '';
       input.id = this.scopeToClass(this.key)
  			if (this.structure[this.key].required) input.required = true;
       input.bind('value', new PathObserver(this.data, this.key)) 
@@ -691,21 +839,20 @@
     createJSONField: function(fields){
       //TODO: only basic JSON support, if you want crazy complicated stuff, just use a textarea or custom input 
       var wrapper = this.createWithAttributes('div', { "class": "json-wrapper" }),
-          input = this.createWithAttributes("textarea", { name: this.updateFieldScope(), "class": "hidden" }),
+          input = this.createWithAttributes("textarea", { name: this.updateFieldScope(), "class": "hidden", text: JSON.stringify(this.data[this.key]) }),
           isList = this.parentStructure !== null && this.parentStructure[this.parentContext].allowAdd;
 
       if (!this.data[this.key]) this.data[this.key] = {};
-    
-      var observer = new ObjectObserver(this.data[this.key])
-      observer.open(function(){
+      
+      new ObjectObserver(this.data[this.key]).open(function(){
         input.value = JSON.stringify(this.data[this.key])
       }.bind(this))
        
-      input.bind('value', new PathObserver(this.data, this.key)) 
+      // input.bind('value', new PathObserver(this.data, this.key)) 
 
       wrapper.appendChild(input);
       for (var i=0; i<fields.length; i++){
-        this.data[this.key][fields[i]] = "";
+        this.data[this.key][fields[i]] = this.data[this.key][fields[i]] || "";
         var input_wrapper = this.createWithAttributes("div", { "class": (isList ? "input-wrapper" : "input") + " json-input-wrapper"})
             decorator = document.createElement("gc-input-decorator"),
             el = this.createWithAttributes('input');
@@ -717,8 +864,6 @@
 
         el.bind("value", new PathObserver(this.data[this.key], fields[i]))
         
-        //TODO: create a parentStruture thing. check the parent structure for isNull or allowAdd
-        //change the container selector appropriately 
         if (isList){
           var className = "." + this.parentContext + "-" + this.getIndex(this.data) +  " .input-wrapper." + this.key;
           var o = { element: input_wrapper, container: className, events: {}, position: "before" }
@@ -727,7 +872,6 @@
         }
 
         this.inputList.push(o)
-        //wrapper.appendChild(decorator);
       }
 
       return wrapper;

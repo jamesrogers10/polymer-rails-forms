@@ -29,7 +29,7 @@ then in your /app/assets/components/application.html file add
 This is what a simple login form could look like using this gem
 
 ```html
-<rails-form id='sign_in_form' action="/users/sign_in" methos="POST" scope="user" submitText="Sign In"></rails-form>
+<rails-form id='sign_in_form' action="/users/sign_in" method="POST" scope="user" submitText="Sign In"></rails-form>
 <script>
 	document.getElementById("sign_in_form").setAttribute("structure", JSON.stringify({
 		email: { type: 'string', label: "Email Address" },
@@ -85,8 +85,8 @@ again, but this time with nested location attributes
 
       ready: function(){
         this.structure = {
-	      email: { type: 'string', label: "Email Address" },
-	      password: { type: 'password' },
+	      email: { type: 'string', label: "Email Address", required: true },
+	      password: { type: 'password', required: true },
 	      location: { type: 'nest', allowAdd: false, multiple: false, structure: {
 	          address: { type: "string" },
     		  city: { type: "string" },
@@ -106,6 +106,11 @@ to set ```multiple: true``` the name would become ```user[location_attributes][0
 you were to set ```allowAdd: true``` the inputs would be in a list with the option to create more. 
 
 
+###Validations
+
+Also not that I've included ```required: true``` on the email and password fields. This means this triggers
+them to be validated onSubmit and onChange. For a custome validation just use ```validates: 'method_name'```
+
 ####Note:
 
 If you're going to use the domReady function in your custom form element, be sure to call
@@ -117,6 +122,12 @@ functionality though, just make sure you run the ```this.appendInputs()``` so th
 
 To make the form ajaxy just include the form element's ```xhr='true'``` param 
 and override the ```handleXhrCallback``` function. 
+
+
+###Selects
+
+selects are the same as any other input except that they also require the values property which is and array of 
+arrays, so ```[[value1, text2], [value2, text2]]```
 
 ##What's supported what's not
 
@@ -138,7 +149,6 @@ and override the ```handleXhrCallback``` function.
 ###What's not supported 
 
 * radio buttons
-* selects
 * ranges
 * everything else
 
