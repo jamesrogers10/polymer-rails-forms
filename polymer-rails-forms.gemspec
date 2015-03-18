@@ -1,9 +1,9 @@
 Gem::Specification.new do |s|
   s.name        = 'polymer-rails-forms'
-  s.version     = '0.2.01'
+  s.version     = '0.3.0'
   s.date        = Date.today.strftime("%Y-%m-%d")
   s.summary     = "For creating rails compatable forms using the power of Polymer"
-  s.description = "Not ready yet"
+  s.description = "Powerful and simple complex or simple forms supporting a variety of standard and custom input types"
   s.authors     = ["Joel Weber", "James Rogers"]
   s.email       = 'joel@gearcommons.com'
   s.files       = Dir.glob("{assets,lib}/**/*") + %w(LICENSE README.md)
