@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'polymer-rails-forms'
-  s.version     = '0.3.01'
+  s.version     = '0.3.02'
   s.date        = Date.today.strftime("%Y-%m-%d")
   s.summary     = "For creating rails compatable forms using the power of Polymer"
   s.description = "Powerful and simple complex or simple forms supporting a variety of standard and custom input types"

@@ -111,8 +111,8 @@
       return this.data
     },
 
-    listItemClassName: function(obj){
-      return  this.key + "-" + this.getIndex(obj);
+    listItemClassName: function(index){
+      return  this.key + "-" + index;
     },
 
     /* Effects */
@@ -179,7 +179,7 @@
     /* Creating Element */
     //TODO: Wow, this seems like it could be way simpler. 
     createListItem: function(obj, structure, data){
-      var className = this.listItemClassName(obj),
+      var className = this.listItemClassName(data.indexOf(obj)),
           container = this.createWithAttributes("div", {'class': "list-item-display"});
 
       if (structure.display_fields){
