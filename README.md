@@ -1,6 +1,12 @@
 polymer-rails-forms
 ===================
 
+##This repo has moved!
+
+Active development is now at https://github.com/hobberwickey/polymer-rails-forms (and it's 
+now a bower package instead of a gem).
+
+
 
 ##What this gem does
 
